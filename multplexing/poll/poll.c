@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <sqlite3.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -13,7 +14,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h> 
 #include <poll.h>
-
 #define ARRAY_SIZE(x)       (sizeof(x)/sizeof(x[0]))
 
 static inline void print_usage(char *progname);
@@ -32,7 +32,10 @@ int main(int argc, char **argv)
     int                       max;
     char                      buf[1024];
     struct pollfd             fds_array[1024];
-
+    float                     temp;
+    sqlite3*                  sqt_db;
+    int                       sqt_id=0;
+    
     struct option             long_options[] = 
     {   
         {"daemon", no_argument, NULL, 'b'},
@@ -175,11 +178,18 @@ int main(int argc, char **argv)
 		else
 		{
 		    printf("socket[%d] read get %d bytes data\n", fds_array[i].fd, rv);
-
-		    /* convert letter from lowercase to uppercase */
-		    for(j=0; j<rv; j++)
-			buf[j]=toupper(buf[j]);
-
+		    
+		    /*数据库操作*/
+		    temp=(atoi(buf))/1000.0;
+		    printf("receive the temperature from cline is:%f\n",temp);
+		    sqlite3_open("temperature.db",&sqt_db);
+		    sqlite3_exec(sqt_db,"create table poll_temp(sqt_id int,temperature float)",NULL,NULL,NULL);
+		    sqt_id++;
+		    /*sqlite3中插入的值为变量要将变量转化为字符*/
+		    char* Sql=sqlite3_mprintf("insert into poll_temp values('%d','%f')",sqt_id,temp);
+		    sqlite3_exec(sqt_db,Sql,NULL,NULL,NULL);
+		    sqlite3_close(sqt_db);
+			
                     if( write(fds_array[i].fd, buf, rv) < 0 )
 		    {
 		        printf("socket[%d] write failure: %s\n", fds_array[i].fd, strerror(errno));

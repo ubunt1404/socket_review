@@ -115,7 +115,7 @@ int  main(int   argc,char   **argv)
 		     sqlite3_open("temperature.db",&sqt_db);
 		     sqlite3_exec(sqt_db,"create table socket_server(id int,temperature float)",NULL,NULL,NULL);
 		     sqt_id++;
-		     /*sqlite3中插入的值为变量*/
+		     /*sqlite3中插入的值为变量要将变量转化为字符*/
 		     char* Sql=sqlite3_mprintf("insert into socket_server values('%d','%f')",sqt_id,temp);
 		     sqlite3_exec(sqt_db,Sql,NULL,NULL,NULL);
 		     sqlite3_close(sqt_db);

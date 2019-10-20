@@ -9,7 +9,7 @@
 #include<stdlib.h>
 #include<pthread.h>
 #include<string.h>
-
+#include<sqlite3.h>
 #define  BACKLOG   13
 void* work_func(void* arg);
 int  main(int   argc,char   **argv)
@@ -27,6 +27,7 @@ int  main(int   argc,char   **argv)
 	int                           port=-1;
 	int                           rt_bind=-1;
    	int                           c=0;
+
 	socket_fd=socket(AF_INET,SOCK_STREAM,0);
 	if(socket_fd<0)
 	{
@@ -128,7 +129,9 @@ void* work_func(void* arg)
 	char                      buf[1024];
 	int                       acpt_fd;
 	int                       rv=-1;
-	
+	float			  temp=0;
+	sqlite3*		  sqt_db;
+	int			  id_sqt=0;	
 	acpt_fd=(int)arg;
 	memset(&buf,0,sizeof(buf));
 	while(1)
@@ -145,6 +148,13 @@ void* work_func(void* arg)
 		        close(acpt_fd);
 			pthread_exit(NULL);
 		}
+		temp=(atoi(buf))/1000.0;
+		printf("receive temperature from cline is:%f\n",temp);
+		sqlite3_open("temp_pthread.db",&sqt_db);
+		sqlite3_exec(sqt_db,"create table temperature(id_sqt int,temp float)",NULL,NULL,NULL);
+		char* sqt_laug=sqlite3_mprintf("insert into temperature values('%d','%f')",id_sqt,temp);
+		sqlite3_exec(sqt_db,sqt_laug,NULL,NULL,NULL);
+		sqlite3_close(sqt_db);
 		rv=write(acpt_fd,buf,sizeof(buf));
 		if(rv<0)
 		{

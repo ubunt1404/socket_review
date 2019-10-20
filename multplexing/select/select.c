@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/in.h> 
-
+#include<sqlite3.h>
 #define ARRAY_SIZE(x)       (sizeof(x)/sizeof(x[0]))
 
 static inline void msleep(unsigned long ms);
@@ -33,7 +33,10 @@ int main(int argc, char **argv)
     int                       maxfd=0;
     char                      buf[1024];
     int                       fds_array[1024];
-
+    float                           temp;
+    sqlite3*                      sqt_db;
+    int                              sqt_id=0;
+    
     struct option             long_options[] = 
     {   
         {"daemon", no_argument, NULL, 'b'},
@@ -103,7 +106,6 @@ int main(int argc, char **argv)
 	{
 	    if( fds_array[i] < 0 )
 		    continue;
-
 	    maxfd = fds_array[i]>maxfd ? fds_array[i] : maxfd;
 	    
 	    /*将文件描述符数组中的描述符加入集合*/
@@ -112,12 +114,12 @@ int main(int argc, char **argv)
 
 	/* program will blocked here */
         rv = select(maxfd+1, &rdset, NULL, NULL, NULL); 
-        if(rv < 0)
+        if(rv < 0)//出错
         {
             printf("select failure: %s\n", strerror(errno));
             break;
         }
-        else if(rv == 0)
+        else if(rv == 0)//超时
         {
             printf("select get timeout\n");
             continue;
@@ -170,12 +172,15 @@ int main(int argc, char **argv)
 		{
 		    printf("socket[%d] read get %d bytes data\n", fds_array[i], rv);
 
-		    /* convert letter from lowercase to uppercase */
-		    for(j=0; j<rv; j++)
-
-			/*将字符的小写改为大写存入buf中*/
-			buf[j]=toupper(buf[j]);
-
+		    temp=(atoi(buf))/1000.0;
+		    printf("receive the temperature from cline is:%f\n",temp);
+		    sqlite3_open("temp_select.db",&sqt_db);
+		    sqlite3_exec(sqt_db,"create table temperature(id int,temperature float)",NULL,NULL,NULL);
+		    sqt_id++;
+		    /*sqlite3中插入的值为变量要将变量转化为字符*/
+		    char* Sql=sqlite3_mprintf("insert into temperature values('%d','%f')",sqt_id,temp);
+		    sqlite3_exec(sqt_db,Sql,NULL,NULL,NULL);
+		    sqlite3_close(sqt_db);
                     if( write(fds_array[i], buf, rv) < 0 )
 		    {
 		        printf("socket[%d] write failure: %s\n", fds_array[i], strerror(errno));

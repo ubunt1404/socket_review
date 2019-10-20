@@ -7,7 +7,7 @@
 #include<arpa/inet.h>
 #include<unistd.h>
 #include<stdlib.h>
-
+#include<sqlite3.h>
 #define  BACKLOG   13
 int  main(int   argc,char   **argv)
 {
@@ -24,6 +24,9 @@ int  main(int   argc,char   **argv)
 	int 			      reuse=0;
 	int                           port=-1;
 	int                           rt_bind=-1;
+	float 			      temp=0;
+	int                           id_sqt=0;
+	sqlite3*		      sqt_db;
 	/*通信协议（ipv 4/6）、通信类型(TCP/UDP)、协议编号。
 	 * 成功：返回文件描述符。失败：返回-1*/
 	socket_fd=socket(AF_INET,SOCK_STREAM,0);
@@ -128,7 +131,16 @@ int  main(int   argc,char   **argv)
 				close(acpt_fd);
 				exit(0);
 			}
-			printf("%s\n",buf);
+			temp=(atoi(buf))/1000.0;
+			printf("content of buf is:%s\n",buf);
+			printf("receive the temperature from cline is:%f\n",temp);
+			
+			/*对收到的温度做数据库操作*/
+			sqlite3_open("temp_fork.db",&sqt_db);
+			sqlite3_exec(sqt_db,"create table temperature(id_sqt int,temperature float)",NULL,NULL,NULL);
+			char* sqt_laug=sqlite3_mprintf("insert into temperature values('%d','%f')",id_sqt,temp);
+			sqlite3_exec(sqt_db,sqt_laug,NULL,NULL,NULL);
+			sqlite3_close(sqt_db);
 		}
       		close(acpt_fd);/*关闭子进程中的客户端请求*/
 	     }
