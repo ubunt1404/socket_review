@@ -52,7 +52,7 @@ int main(int argc, char **argv)
         switch (opt)
         {   
             case 'b':
-                daemon_run=1;
+				daemon_run=1;
                 break;
 
             case 'p':
@@ -109,15 +109,16 @@ int main(int argc, char **argv)
 
     for ( ; ; ) 
     {
-	/* 参数：
-	 * 	参1：指向pollfd型结构体的数组
-	 * 	参2：数组中监听元素的个数
-	 * 	参3:我们愿意等待多长时间：
-	 * 				==-1：永不超时
-	 * 				==0：不等待
-	 * 				>0:等待毫秒级 
-	 */
-        rv = poll(fds_array, max+1, -1);
+		/* 参数：
+		* 	参1：指向pollfd型结构体的数组
+		* 	参2：数组中监听元素的个数
+		* 	参3: 我们愿意等待多长时间：
+		* 				==-1：永不超时
+		* 				==0：不等待
+		* 				>0:等待毫秒级 
+		*/
+
+		rv = poll(fds_array, max+1, -1);
         if(rv < 0)
         {
             printf("poll failure: %s\n", strerror(errno));
@@ -129,8 +130,8 @@ int main(int argc, char **argv)
             continue;
         }
 
-	/* listen socket get event means new client start connect now */
-	if (fds_array[0].revents & POLLIN)
+		/* listen socket get event means new client start connect now */
+		if (fds_array[0].revents & POLLIN)
         {
             if( (connfd=accept(listenfd, (struct sockaddr *)NULL, NULL)) < 0)
             {
@@ -142,20 +143,20 @@ int main(int argc, char **argv)
 	    for(i=1; i<ARRAY_SIZE(fds_array) ; i++)
 	    {
 	        if( fds_array[i].fd < 0 )
-		{
-		   printf("accept new client[%d] and add it into array\n", connfd );
-		   fds_array[i].fd = connfd;
-		   fds_array[i].events = POLLIN;
-		   found = 1;
-		   break;
-		}
+			{
+				printf("accept new client[%d] and add it into array\n", connfd );
+				fds_array[i].fd = connfd;
+				fds_array[i].events = POLLIN;
+				found = 1;
+				break;
+			}
 	    }
 
 	    if( !found )
 	    {
-		printf("accept new client[%d] but full, so refuse it\n", connfd);
-		close(connfd);
-		continue;
+			printf("accept new client[%d] but full, so refuse it\n", connfd);
+			close(connfd);
+			continue;
 	    }
 	   
 	    max = i>max ? i : max;
@@ -164,42 +165,44 @@ int main(int argc, char **argv)
         }
         else /* data arrive from already connected client */
         {
-	    for(i=1; i<ARRAY_SIZE(fds_array); i++)
-	    {
-		if( fds_array[i].fd < 0 )
-		   continue;
-
-                if( (rv=read(fds_array[i].fd, buf, sizeof(buf))) <= 0)
-                {
-                   printf("socket[%d] read failure or get disconncet.\n", fds_array[i].fd);
-		   close(fds_array[i].fd);
-		   fds_array[i].fd = -1;
-		}
-		else
-		{
-		    printf("socket[%d] read get %d bytes data\n", fds_array[i].fd, rv);
+			for(i=1; i<ARRAY_SIZE(fds_array); i++)
+			{
+				if( fds_array[i].fd < 0 )
+					continue;
+				
+				if(fds_array[i].revents & POLLIN)//连上的客户端被监听到有事件响应
+				{
+					rv=read( fds_array[i].fd, buf, sizeof(buf) );
+					if( (rv=read(fds_array[i].fd, buf, sizeof(buf))) <= 0)
+					{
+						printf("socket[%d] read failure or get disconncet.\n", fds_array[i].fd);
+						close(fds_array[i].fd);
+						fds_array[i].fd = -1;
+					}
+					printf("socket[%d] read get %d bytes data successful!\n", fds_array[i].fd, rv);
 		    
-		    /*数据库操作*/
-		    temp=(atoi(buf))/1000.0;
-		    printf("receive the temperature from cline is:%f\n",temp);
-		    sqlite3_open("temperature.db",&sqt_db);
-		    sqlite3_exec(sqt_db,"create table poll_temp(sqt_id int,temperature float)",NULL,NULL,NULL);
-		    sqt_id++;
-		    /*sqlite3中插入的值为变量要将变量转化为字符*/
-		    char* Sql=sqlite3_mprintf("insert into poll_temp values('%d','%f')",sqt_id,temp);
-		    sqlite3_exec(sqt_db,Sql,NULL,NULL,NULL);
-		    sqlite3_close(sqt_db);
-			
-                    if( write(fds_array[i].fd, buf, rv) < 0 )
-		    {
-		        printf("socket[%d] write failure: %s\n", fds_array[i].fd, strerror(errno));
-		       	close(fds_array[i].fd);
-		       	fds_array[i].fd = -1;
-		    }
+					/*数据库操作*/
+					temp=(atoi(buf))/1000.0;
+					printf("receive the temperature from cline is:%f\n",temp);
+					sqlite3_open("temperature.db",&sqt_db);
+					sqlite3_exec(sqt_db,"create table poll_temp(sqt_id int,temperature float)",NULL,NULL,NULL);
+					sqt_id++;
+
+					/*sqlite3中插入的值为变量要将变量转化为字符*/
+					char* Sql=sqlite3_mprintf("insert into poll_temp values('%d','%f')",sqt_id,temp);
+					sqlite3_exec(sqt_db,Sql,NULL,NULL,NULL);
+					sqlite3_close(sqt_db);
+				
+				    else if( write(fds_array[i].fd, buf, rv) < 0 )
+					{
+						printf("socket[%d] write failure: %s\n", fds_array[i].fd, strerror(errno));
+						close(fds_array[i].fd);
+						fds_array[i].fd = -1;
+					}
+				}
+			}
 		}
-            }
-        }
-    }
+	}
 
 CleanUp:
     close(listenfd);
@@ -253,7 +256,7 @@ int socket_server_init(char *listen_ip, int listen_port)
         if (inet_pton(AF_INET, listen_ip, &servaddr.sin_addr) <= 0)
         {
             printf("inet_pton() set listen IP address failure.\n");
-	    rv = -2;
+		    rv = -2;
             goto CleanUp;
         }
     }
