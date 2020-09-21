@@ -23,7 +23,7 @@ int main(int argc ,char **argv)
 {
 	int			mkf_rt=0;
 	int			open_rt=0;
-	char		buf[30];
+	char			buf[30];
 	int			sev_wr_rt;
 	int			sev_rd_rt;
 	int			mode;
