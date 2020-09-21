@@ -28,7 +28,7 @@ int main(int argc,char **argv)
 	int			cln_wr_rt=0;
 	int			mkf_rt=0;
 	int			open_rt=0;
-	char		buf[30];
+	char			buf[30];
 	int			mode;
 
 	if(access(FIFO,F_OK))//判断一下文件，免得每次./test都要手动删除两个文件
